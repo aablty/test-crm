@@ -43,6 +43,13 @@ export class AuthService {
     return this.signToken(payload);
   }
 
+  async getProfile(userId: string) {
+    const user = await this.users.findByEmail(userId);
+    if (!user) throw new BadRequestException('Пользователь не найден');
+
+    return { id: user.id, email: user.email };
+  }
+
   private async validateUser(email: string, password: string) {
     const user = await this.users.findByEmail(email);
     if (!user) return null;

@@ -1,6 +1,6 @@
 import { IsString, IsOptional, Length, IsEnum } from 'class-validator';
 
-enum TaskStatus {
+export enum TaskStatus {
   TODO = 'TODO',
   IN_PROGRESS = 'IN_PROGRESS',
   DONE = 'DONE',
@@ -14,13 +14,13 @@ export class CreateTaskDto {
   @IsString({ message: 'Описание должно быть строкой' })
   @IsOptional()
   @Length(0, 1000, { message: 'Описание должно быть до 1000 символов' })
-  description!: string;
+  description?: string;
 
   @IsEnum(TaskStatus, {
     message: 'Статус должен быть одним из: TODO, IN_PROGRESS, DONE',
   })
   @IsOptional()
-  status!: TaskStatus;
+  status?: TaskStatus;
 }
 
 export class UpdateTaskDto {

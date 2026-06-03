@@ -16,8 +16,8 @@ export class TasksController {
   constructor(private readonly tasks: TasksService) {}
 
   @Get()
-  get() {
-    return this.tasks.getAll();
+  get(@CurrentUser() userId: string) {
+    return this.tasks.getAll(userId);
   }
 
   @Post()

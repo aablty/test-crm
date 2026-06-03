@@ -1,17 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearToken } from "../../../shared/store";
+import Button from "../../../shared/ui/Button";
 import { parseAxiosMessage } from "../../../shared/utils";
 import { apiDeleteTask, apiFetchTasks, apiUpdateTask, type Task } from "../api";
+import {
+  connectTasksSocket,
+  type TaskDeletedEvent,
+} from "../realtime";
 import CreateTask from "./CreateTask";
 import TaskItem from "./TaskItem";
 import UpdateTask from "./UpdateTask";
-import Button from "../../../shared/ui/Button";
-import { clearToken } from "../../../shared/store";
+
+type StatusFilter = "ALL" | Task["status"];
+
+const filters: Array<{ value: StatusFilter; label: string }> = [
+  { value: "ALL", label: "Все" },
+  { value: "TODO", label: "TODO" },
+  { value: "IN_PROGRESS", label: "IN_PROGRESS" },
+  { value: "DONE", label: "DONE" },
+];
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [showCreate, setShowCreate] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -37,6 +51,58 @@ export default function Tasks() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    const socket = connectTasksSocket();
+    if (!socket) return;
+
+    const upsertTask = (task: Task) => {
+      setTasks((prev) => {
+        const exists = prev.some((item) => item.id === task.id);
+        if (exists) {
+          return prev.map((item) => (item.id === task.id ? task : item));
+        }
+        return [task, ...prev];
+      });
+
+      setEditing((prev) => (prev?.id === task.id ? task : prev));
+    };
+
+    const deleteTask = (event: TaskDeletedEvent) => {
+      setTasks((prev) => prev.filter((task) => task.id !== event.id));
+      setEditing((prev) => (prev?.id === event.id ? null : prev));
+      setShowUpdate(false);
+    };
+
+    const reloadTasks = () => {
+      void (async () => {
+        try {
+          const data = await apiFetchTasks();
+          setTasks(data);
+        } catch (error) {
+          setError(parseAxiosMessage(error));
+        }
+      })();
+    };
+
+    socket.on("task.created", upsertTask);
+    socket.on("task.updated", upsertTask);
+    socket.on("task.deleted", deleteTask);
+    socket.on("task.statusChanged", reloadTasks);
+
+    return () => {
+      socket.off("task.created", upsertTask);
+      socket.off("task.updated", upsertTask);
+      socket.off("task.deleted", deleteTask);
+      socket.off("task.statusChanged", reloadTasks);
+      socket.disconnect();
+    };
+  }, []);
+
+  const filteredTasks = useMemo(() => {
+    if (statusFilter === "ALL") return tasks;
+    return tasks.filter((task) => task.status === statusFilter);
+  }, [statusFilter, tasks]);
 
   const handleNext = async (task: Task) => {
     const next =
@@ -80,7 +146,7 @@ export default function Tasks() {
       <div className="w-full max-w-3xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900 flex gap-2 items-center">
+            <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
               Задачи
               <Button onClick={() => setShowCreate(true)}>Добавить</Button>
             </h1>
@@ -91,6 +157,19 @@ export default function Tasks() {
           </Button>
         </div>
 
+        <div className="mb-3 flex flex-wrap gap-2">
+          {filters.map((filter) => (
+            <Button
+              key={filter.value}
+              type="button"
+              variant={statusFilter === filter.value ? "primary" : "secondary"}
+              onClick={() => setStatusFilter(filter.value)}
+            >
+              {filter.label}
+            </Button>
+          ))}
+        </div>
+
         {error && (
           <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -99,13 +178,13 @@ export default function Tasks() {
 
         {loading ? (
           <p className="text-sm text-slate-500">Загрузка задач...</p>
-        ) : tasks.length === 0 ? (
+        ) : filteredTasks.length === 0 ? (
           <p className="rounded-md border border-slate-200 bg-white px-3 py-4 text-sm text-slate-500">
-            Задач пока нет
+            Задач нет
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {tasks.map((task) => (
+            {filteredTasks.map((task) => (
               <TaskItem
                 key={task.id}
                 task={task}

@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { getToken } from "./shared/store";
+import { useToken } from "./shared/store";
 import { LogIn, SignUp } from "./features/auth/ui";
 import Tasks from "./features/tasks/ui/Tasks";
 
@@ -20,7 +20,7 @@ export default function App() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = getToken();
+  const token = useToken();
 
   if (!token) {
     return <Navigate to="/login" replace />;

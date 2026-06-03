@@ -142,7 +142,7 @@ export default function Tasks() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
+    <main className="flex min-h-screen items-start justify-center p-4">
       <div className="w-full max-w-3xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>

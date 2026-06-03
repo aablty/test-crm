@@ -1,5 +1,4 @@
 import axios from "axios";
-import { redirect } from "react-router-dom";
 
 import { getToken, clearToken } from "./store";
 
@@ -23,7 +22,9 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       clearToken();
-      redirect("/login");
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
     }
     return Promise.reject(error);
   },

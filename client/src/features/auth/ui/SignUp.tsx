@@ -14,10 +14,13 @@ export function SignUp() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: React.SubmitEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     setError("");
 
     if (form.password !== form.confirmPassword) {
@@ -25,28 +28,32 @@ export function SignUp() {
       return;
     }
 
+    setSubmitting(true);
+
     try {
-      const response = await apiRegister(form.email, form.password);
-      if (response?.access_token) {
-        setToken(response.access_token);
-        navigate("/tasks", { replace: true });
+      const response = await apiRegister(form.email.trim(), form.password);
+      if (!response?.access_token) {
+        setError("Сервер не вернул access token");
+        return;
       }
+
+      setToken(response.access_token);
+      void navigate("/tasks", { replace: true });
     } catch (error) {
       setError(parseAxiosMessage(error));
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="flex flex-col items-center w-full max-w-xl">
+      <div className="flex w-full max-w-xl flex-col items-center">
         <h1 className="mb-4 text-xl font-semibold text-slate-900">
           Регистрация
         </h1>
 
-        <form
-          onSubmit={submit}
-          className="flex flex-col gap-3 w-full max-w-xs"
-        >
+        <form onSubmit={submit} className="flex w-full max-w-xs flex-col gap-3">
           <label htmlFor="email" className="text-sm font-medium text-slate-700">
             Эл. почта
           </label>
@@ -99,7 +106,7 @@ export function SignUp() {
             </div>
           )}
 
-          <Button type="submit" className="w-full min-h-9">
+          <Button type="submit" className="min-h-9 w-full" disabled={submitting}>
             Зарегистрироваться
           </Button>
         </form>

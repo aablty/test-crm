@@ -21,11 +21,15 @@ export class TasksService {
 
   async update(userId: string, taskId: string, _dto: UpdateTaskDto) {
     const task = await this.prisma.task.findFirst({
-      where: { id: taskId, authorId: userId },
+      where: { id: taskId },
     });
 
     if (!task) {
       throw new BadRequestException('Задача не найдена');
+    }
+
+    if (task.authorId !== userId) {
+      throw new BadRequestException('Нет прав на изменение этой задачи');
     }
 
     return this.prisma.task.update({
@@ -36,11 +40,15 @@ export class TasksService {
 
   async delete(userId: string, taskId: string) {
     const task = await this.prisma.task.findFirst({
-      where: { id: taskId, authorId: userId },
+      where: { id: taskId },
     });
 
     if (!task) {
       throw new BadRequestException('Задача не найдена');
+    }
+
+    if (task.authorId !== userId) {
+      throw new BadRequestException('Нет прав на удаление этой задачи');
     }
 
     return this.prisma.task.delete({ where: { id: taskId } });
